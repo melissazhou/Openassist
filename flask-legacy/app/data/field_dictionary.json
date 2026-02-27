@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "business_desc": "change status",
+    "field_name": "item_status",
+    "system": "PLM/EBS",
+    "description": "物料状态（Active, Inactive, Obsolete等）",
+    "created_at": "2024-01-01 10:00:00"
+  },
+  {
+    "id": 2,
+    "business_desc": "change buyer",
+    "field_name": "buyer_code",
+    "system": "EBS",
+    "description": "采购员代码",
+    "created_at": "2024-01-01 10:00:00"
+  },
+  {
+    "id": 3,
+    "business_desc": "update pallet",
+    "field_name": "pallet_config",
+    "system": "PLM",
+    "description": "托盘配置信息",
+    "created_at": "2024-01-01 10:00:00"
+  },
+  {
+    "id": 4,
+    "business_desc": "update BOM",
+    "field_name": "bom",
+    "system": "PLM/EBS",
+    "description": "物料清单",
+    "created_at": "2024-01-01 10:00:00"
+  },
+  {
+    "id": 5,
+    "business_desc": "change description",
+    "field_name": "description",
+    "system": "PLM/EBS",
+    "description": "物料描述",
+    "created_at": "2024-01-01 10:00:00"
+  },
+  {
+    "id": 6,
+    "business_desc": "update UOM",
+    "field_name": "primary_uom_code",
+    "system": "EBS",
+    "description": "主单位",
+    "created_at": "2024-01-01 10:00:00"
+  }
+]

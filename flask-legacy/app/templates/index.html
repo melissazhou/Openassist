@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Login Page -->
+<div id="loginPage" class="page">
+    <div class="login-container">
+        <div class="login-box">
+            <h1>🤖 OpenAssist</h1>
+            <p class="subtitle">AI-Assisted MDM Platform</p>
+            
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" placeholder="Enter username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" placeholder="Enter password" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block">Login</button>
+                
+                <div class="login-hint">
+                    <small>💡 Quick login (click to fill):</small>
+                    <div class="quick-login-btns">
+                        <button type="button" class="btn-quick" onclick="quickLogin('admin','admin123')">🔑 Admin</button>
+                        <button type="button" class="btn-quick" onclick="quickLogin('mdm','mdm123')">👷 MDM</button>
+                        <button type="button" class="btn-quick" onclick="quickLogin('demo','demo')">👤 Demo</button>
+                        <button type="button" class="btn-quick" onclick="quickLogin('viewer','viewer')">👁 Viewer</button>
+                    </div>
+                </div>
+            </form>
+            
+            <div id="loginError" class="error-message" style="display: none;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Application -->
+<div id="mainApp" class="page" style="display: none;">
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h2>🤖 OpenAssist</h2>
+        </div>
+        <div class="nav-user">
+            <span id="userInfo"></span>
+            <span id="userRole" class="role-badge"></span>
+            <button id="logoutBtn" class="btn btn-secondary btn-sm">Logout</button>
+        </div>
+    </nav>
+    
+    <!-- Tab Navigation -->
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
+        <button class="tab-btn" data-tab="requests">📋 Change Requests</button>
+        <button class="tab-btn" data-tab="query">🔎 Item Query</button>
+        <button class="tab-btn" data-tab="dictionary">📖 Field Dictionary</button>
+    </div>
+    
+    <!-- Tab Content -->
+    <div class="tab-content">
+        <!-- Dashboard -->
+        <div id="dashboard" class="tab-pane active">
+            <h2>📊 Dashboard</h2>
+            
+            <div class="stats-grid">
+                <div class="stat-card stat-active">
+                    <div class="stat-value" id="statActive">-</div>
+                    <div class="stat-label">Active</div>
+                </div>
+                <div class="stat-card stat-pending">
+                    <div class="stat-value" id="statPending">-</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+                <div class="stat-card stat-approved">
+                    <div class="stat-value" id="statApproved">-</div>
+                    <div class="stat-label">Approved</div>
+                </div>
+                <div class="stat-card stat-completed">
+                    <div class="stat-value" id="statCompleted">-</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statTotal">-</div>
+                    <div class="stat-label">Total</div>
+                </div>
+            </div>
+            
+            <div class="dashboard-grid">
+                <div class="section">
+                    <h3>📌 Active Requests by Category</h3>
+                    <div id="activeByCategoryChart" class="chart-container"></div>
+                </div>
+                <div class="section">
+                    <h3>✅ Completed by Category</h3>
+                    <div id="completedByCategoryChart" class="chart-container"></div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Recent Active Requests</h3>
+                <div id="recentRequests" class="table-container"></div>
+            </div>
+        </div>
+        
+        <!-- Change Requests -->
+        <div id="requests" class="tab-pane">
+            <h2>📋 Change Request Management</h2>
+            
+            <div class="section">
+                <div class="filter-bar">
+                    <label>
+                        Status:
+                        <select id="statusFilter">
+                            <option value="_active" selected>Active (non-Completed)</option>
+                            <option value="">All</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Rejected">Rejected</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                    </label>
+                    <label>
+                        Requestor:
+                        <select id="requestorFilter">
+                            <option value="">All</option>
+                        </select>
+                    </label>
+                    <label>
+                        Assigned To:
+                        <select id="assignedToFilter">
+                            <option value="">All</option>
+                        </select>
+                    </label>
+                    <label>
+                        Category:
+                        <select id="categoryFilter">
+                            <option value="">All</option>
+                        </select>
+                    </label>
+                    <label>
+                        From:
+                        <input type="date" id="dateFromFilter">
+                    </label>
+                    <label>
+                        To:
+                        <input type="date" id="dateToFilter">
+                    </label>
+                    <label>
+                        Search:
+                        <input type="text" id="searchFilter" placeholder="Title / Instructions / Item">
+                    </label>
+                    <button id="refreshRequestsBtn" class="btn btn-secondary">🔄 Refresh</button>
+                </div>
+                
+                <div id="requestsCount" class="results-count"></div>
+                <div id="requestsTable" class="table-container"></div>
+            </div>
+        </div>
+        
+        <!-- Item Query -->
+        <div id="query" class="tab-pane">
+            <h2>🔎 Item Data Query</h2>
+            
+            <div class="section">
+                <div class="search-bar">
+                    <input type="text" id="itemSearchInput" placeholder="Enter item number (e.g. DEMO-ITEM-001)">
+                    <button id="searchItemBtn" class="btn btn-primary">Search</button>
+                </div>
+                
+                <div id="itemResult" style="display: none;">
+                    <h3>Query Result</h3>
+                    
+                    <div class="data-panels">
+                        <div class="data-panel">
+                            <h4>📦 EBS Data</h4>
+                            <div id="ebsData" class="data-content"></div>
+                        </div>
+                        
+                        <div class="data-panel">
+                            <h4>🔧 PLM Data</h4>
+                            <div id="plmData" class="data-content"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Field Dictionary -->
+        <div id="dictionary" class="tab-pane">
+            <h2>📖 Field Dictionary</h2>
+            
+            <div class="section">
+                <button id="addDictBtn" class="btn btn-primary">+ Add Entry</button>
+                
+                <div id="dictionaryTable" class="table-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Request Detail -->
+<div id="requestModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3>Change Request Detail</h3>
+        <div id="requestDetail"></div>
+        <div class="modal-actions" id="requestActions"></div>
+    </div>
+</div>
+
+<!-- Modal: Dictionary Edit -->
+<div id="dictModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3 id="dictModalTitle">Add Dictionary Entry</h3>
+        <form id="dictForm">
+            <div class="form-group">
+                <label>Business Description</label>
+                <input type="text" id="dictBusinessDesc" required>
+            </div>
+            <div class="form-group">
+                <label>Field Name</label>
+                <input type="text" id="dictFieldName" required>
+            </div>
+            <div class="form-group">
+                <label>System</label>
+                <input type="text" id="dictSystem" placeholder="e.g. PLM, EBS, PLM/EBS" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="dictDescription" rows="3"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <button type="button" class="btn btn-secondary" id="cancelDictBtn">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Loading -->
+<div id="loading" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Processing...</p>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+{% endblock %}

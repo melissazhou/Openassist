@@ -1,0 +1,9 @@
+物料维护请求示例1
+
+Item: SAMPLE-001, change status from Active to Inactive
+Item: SAMPLE-002, update buyer to BUYER123
+Item: SAMPLE-003, change pallet config from Standard to Custom
+
+Priority: High
+Requestor: Business Team
+Date: 2024-01-15
