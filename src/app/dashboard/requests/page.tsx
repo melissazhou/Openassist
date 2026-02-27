@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useReactTable,
   getCoreRowModel,
@@ -32,10 +32,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Pagination, PaginationContent, PaginationItem, PaginationLink,
-  PaginationNext, PaginationPrevious, PaginationEllipsis,
-} from "@/components/ui/pagination";
 import {
   Plus, Search, Download, Upload, Kanban, ArrowUpDown, ArrowUp, ArrowDown,
   MoreHorizontal, Eye, CheckCircle, XCircle, Columns3, Trash2,
@@ -94,17 +90,21 @@ function SortHeader({ column, children }: { column: any; children: React.ReactNo
   );
 }
 
-async function fetchRequests(params: Record<string, string>) {
-  const qs = new URLSearchParams(params).toString();
-  const res = await fetch(`/api/requests?${qs}`);
-  if (!res.ok) throw new Error("Failed to fetch");
-  return res.json();
+interface PageData {
+  items: any[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export default function RequestsPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const [page, setPage] = useState(1);
+  const [data, setData] = useState<PageData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchKey, setFetchKey] = useState(0); // increment to force refetch
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -126,17 +126,40 @@ export default function RequestsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const queryParams: Record<string, string> = { page: String(page), pageSize: "20" };
-  if (debouncedSearch) queryParams.search = debouncedSearch;
-  if (statusFilter) queryParams.status = statusFilter;
-  if (categoryFilter) queryParams.category = categoryFilter;
-  if (mdmFieldFilter) queryParams.mdmField = mdmFieldFilter;
-  if (orgFilter) queryParams.org = orgFilter;
+  // Data fetching via useEffect (replaces useQuery to avoid render-blocking)
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["requests", queryParams],
-    queryFn: () => fetchRequests(queryParams),
-  });
+    const params = new URLSearchParams({ page: String(page), pageSize: "20" });
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (statusFilter) params.set("status", statusFilter);
+    if (categoryFilter) params.set("category", categoryFilter);
+    if (mdmFieldFilter) params.set("mdmField", mdmFieldFilter);
+    if (orgFilter) params.set("org", orgFilter);
+
+    fetch(`/api/requests?${params}`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((d) => {
+        if (!cancelled) {
+          setData(d);
+          setIsLoading(false);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          console.error("Fetch error:", e);
+          setIsLoading(false);
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [page, debouncedSearch, statusFilter, categoryFilter, mdmFieldFilter, orgFilter, fetchKey]);
+
+  const refetch = useCallback(() => setFetchKey((k) => k + 1), []);
 
   const createMutation = useMutation({
     mutationFn: async (formData: any) => {
@@ -149,7 +172,7 @@ export default function RequestsPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["requests"] });
+      refetch();
       setDialogOpen(false);
       toast.success("Change request created");
     },
@@ -173,7 +196,7 @@ export default function RequestsPage() {
     onSuccess: ({ ok, total }) => {
       toast.success(`Updated ${ok}/${total} requests`);
       setRowSelection({});
-      queryClient.invalidateQueries({ queryKey: ["requests"] });
+      refetch();
     },
   });
 
@@ -187,11 +210,11 @@ export default function RequestsPage() {
     onSuccess: (ok) => {
       toast.success(`Deleted ${ok} requests`);
       setRowSelection({});
-      queryClient.invalidateQueries({ queryKey: ["requests"] });
+      refetch();
     },
   });
 
-  const columns: ColumnDef<any>[] = [
+  const columns: ColumnDef<any>[] = useMemo(() => [
     {
       id: "select",
       header: ({ table }) => (
@@ -234,7 +257,7 @@ export default function RequestsPage() {
     },
     {
       id: "mdmField",
-      accessorFn: (row) => row.fieldLabel || row.mdmField?.replace(/_/g, " ") || row.category?.replace(/_/g, " "),
+      accessorFn: (row: any) => row.fieldLabel || row.mdmField?.replace(/_/g, " ") || row.category?.replace(/_/g, " "),
       header: ({ column }) => <SortHeader column={column}>MDM Field</SortHeader>,
       cell: ({ getValue }) => (
         <Badge variant="outline" className="text-xs">{getValue() as string}</Badge>
@@ -243,7 +266,7 @@ export default function RequestsPage() {
     },
     {
       id: "orgs",
-      accessorFn: (row) => row.orgs?.join(", ") || "-",
+      accessorFn: (row: any) => row.orgs?.join(", ") || "-",
       header: "Org",
       size: 80,
     },
@@ -267,7 +290,7 @@ export default function RequestsPage() {
     },
     {
       id: "requestor",
-      accessorFn: (row) => row.requestor?.displayName || row.requestorName || "-",
+      accessorFn: (row: any) => row.requestor?.displayName || row.requestorName || "-",
       header: ({ column }) => <SortHeader column={column}>Requestor</SortHeader>,
       size: 120,
     },
@@ -308,10 +331,12 @@ export default function RequestsPage() {
       enableSorting: false,
       size: 50,
     },
-  ];
+  ], [router]);
+
+  const tableData = useMemo(() => data?.items || [], [data]);
 
   const table = useReactTable({
-    data: data?.items || [],
+    data: tableData,
     columns,
     state: { sorting, columnVisibility, rowSelection },
     onSortingChange: setSorting,
@@ -333,7 +358,7 @@ export default function RequestsPage() {
       body: JSON.stringify({ status }),
     }).then(() => {
       toast.success(`Status updated to ${status}`);
-      queryClient.invalidateQueries({ queryKey: ["requests"] });
+      refetch();
     }).catch(() => toast.error("Failed to update status"));
   }
 
@@ -440,9 +465,9 @@ export default function RequestsPage() {
                   }).filter(r => r.title);
                   try {
                     const res = await fetch("/api/requests/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rows }) });
-                    const data = await res.json();
-                    toast.success(`Imported ${data.created} requests` + (data.errors?.length ? `, ${data.errors.length} errors` : ""));
-                    queryClient.invalidateQueries({ queryKey: ["requests"] });
+                    const result = await res.json();
+                    toast.success(`Imported ${result.created} requests` + (result.errors?.length ? `, ${result.errors.length} errors` : ""));
+                    refetch();
                     setImportOpen(false);
                   } catch { toast.error("Import failed"); }
                 }}>Import</Button>
@@ -566,7 +591,7 @@ export default function RequestsPage() {
               ))}
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {isLoading && !data ? (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
                 </TableRow>
@@ -605,36 +630,31 @@ export default function RequestsPage() {
           <p className="text-sm text-muted-foreground">
             Page {data.page} of {data.totalPages} ({data.total} total)
           </p>
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious href="#"
-                  onClick={(e) => { e.preventDefault(); if (page > 1) setPage(page - 1); }}
-                  className={page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
-              </PaginationItem>
-              {Array.from({ length: Math.min(data.totalPages, 5) }, (_, i) => {
-                let p: number;
-                if (data.totalPages <= 5) p = i + 1;
-                else if (page <= 3) p = i + 1;
-                else if (page >= data.totalPages - 2) p = data.totalPages - 4 + i;
-                else p = page - 2 + i;
-                return (
-                  <PaginationItem key={p}>
-                    <PaginationLink href="#" isActive={p === page}
-                      onClick={(e) => { e.preventDefault(); setPage(p); }}>{p}</PaginationLink>
-                  </PaginationItem>
-                );
-              })}
-              {data.totalPages > 5 && page < data.totalPages - 2 && (
-                <PaginationItem><PaginationEllipsis /></PaginationItem>
-              )}
-              <PaginationItem>
-                <PaginationNext href="#"
-                  onClick={(e) => { e.preventDefault(); if (page < data.totalPages) setPage(page + 1); }}
-                  className={page >= data.totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"} />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" disabled={page <= 1}
+              onClick={() => setPage(page - 1)}>
+              Previous
+            </Button>
+            {Array.from({ length: Math.min(data.totalPages, 5) }, (_, i) => {
+              let p: number;
+              if (data.totalPages <= 5) p = i + 1;
+              else if (page <= 3) p = i + 1;
+              else if (page >= data.totalPages - 2) p = data.totalPages - 4 + i;
+              else p = page - 2 + i;
+              return (
+                <Button key={p} variant={p === page ? "default" : "outline"} size="sm"
+                  className="min-w-[36px]"
+                  onClick={() => setPage(p)}>{p}</Button>
+              );
+            })}
+            {data.totalPages > 5 && page < data.totalPages - 2 && (
+              <span className="px-2 text-muted-foreground">…</span>
+            )}
+            <Button variant="outline" size="sm" disabled={page >= data.totalPages}
+              onClick={() => setPage(page + 1)}>
+              Next
+            </Button>
+          </div>
         </div>
       )}
     </div>
