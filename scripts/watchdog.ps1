@@ -10,6 +10,7 @@ param(
 )
 
 $ProjectDir = "D:\Project\OpenAssist"
+$Pnpm = "C:\Users\tester\AppData\Roaming\npm\pnpm.cmd"
 $Port = 3000
 $HealthUrl = "http://localhost:$Port/api/admin/health"
 $LogFile = "$ProjectDir\logs\watchdog.log"
@@ -65,7 +66,7 @@ function Start-OpenAssist {
     Set-Location $ProjectDir
     
     # Start next in production mode, detached
-    $process = Start-Process -FilePath "pnpm" -ArgumentList "start", "--port", "$Port" `
+    $process = Start-Process -FilePath $Pnpm -ArgumentList "start", "--port", "$Port" `
         -WorkingDirectory $ProjectDir `
         -WindowStyle Hidden `
         -PassThru `
@@ -127,16 +128,16 @@ switch ($Mode) {
         
         # Retry loop
         for ($i = 1; $i -le $MaxRetries; $i++) {
-            Write-Log "Restart attempt $i/$MaxRetries..."
+            Write-Log "Restart attempt ${i}/${MaxRetries}..."
             Stop-OpenAssist
             Start-Sleep -Seconds 3
             
             $success = Start-OpenAssist
             if ($success) {
-                Write-Log "Restart attempt $i: SUCCESS"
+                Write-Log "Restart attempt ${i} - SUCCESS"
                 exit 0
             }
-            Write-Log "Restart attempt $i: FAILED"
+            Write-Log "Restart attempt ${i} - FAILED"
             Start-Sleep -Seconds 5
         }
         
